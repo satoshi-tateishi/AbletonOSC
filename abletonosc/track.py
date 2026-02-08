@@ -13,21 +13,36 @@ class TrackHandler(AbletonOSCHandler):
                                   *args,
                                   include_track_id: bool = False):
             def track_callback(params: Tuple[Any]):
-                # track_idを強制的に文字列として取得
-                track_id = str(params[0]) 
+                track_id = params[0]
                 tracks = []
 
                 try:
-                    if track_id == "*":
-                        tracks = list(self.song.tracks)
-                    elif track_id == "master":
-                        tracks = [self.song.master_track]
-                    elif re.match(r"^return \d+$", track_id):
-                        idx = int(track_id.split(" ")[1])
-                        tracks = [self.song.return_tracks[idx]]
+                    if isinstance(track_id, int):
+                        # 数値(整数)の場合はインデックスとして処理
+                        tracks = [self.song.tracks[track_id]]
                     else:
-                        # 純粋な数値(トラックインデックス)として処理
-                        tracks = [self.song.tracks[int(track_id)]]
+                        # 文字列の場合の処理
+                        track_id_str = str(track_id)
+                        if track_id_str == "*":
+                            tracks = list(self.song.tracks)
+                        elif track_id_str == "master":
+                            tracks = [self.song.master_track]
+                        elif re.match(r"^return \d+$", track_id_str):
+                            idx = int(track_id_str.split(" ")[1])
+                            tracks = [self.song.return_tracks[idx]]
+                        else:
+                            # トラック名として検索
+                            found_track = None
+                            for t in self.song.tracks:
+                                if t.name == track_id_str:
+                                    found_track = t
+                                    break
+                            
+                            if found_track:
+                                tracks = [found_track]
+                            else:
+                                self.logger.error("Track Name Error: Could not find track named '%s'" % track_id_str)
+                                return
                 except Exception as e:
                     self.logger.error("Track ID Error (%s): %s" % (track_id, str(e)))
                     return
