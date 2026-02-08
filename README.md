@@ -137,7 +137,7 @@ for [Live Object Model - Song](https://docs.cycling74.com/max8/vignettes/live_ob
 | Address                                    | Query params                | Response params | Description                                             |
 |:-------------------------------------------|:----------------------------|:----------------|:--------------------------------------------------------|
 | /live/song/set/arrangement_overdub         | arrangement_overdub         |                 | Set arrangement overdub (1=on, 0=off)                   |
-| /live/song/set/back_to_arranger            | back_to_arranger            |                 | Set whether "back to arranger" is lit (1=on, 0=off)     |
+| /live/song/set/back_to_arranger            | back_to_arranger            |                 | Set whether "back to arranger" is lit (1=on, 0=off). Set to `0` to re-enable arrangement playback.     |
 | /live/song/set/clip_trigger_quantization   | clip_trigger_quantization   |                 | Set the current clip trigger quantization level         |
 | /live/song/set/current_song_time           | current_song_time           |                 | Set the current song time, in beats                     |
 | /live/song/set/groove_amount               | groove_amount               |                 | Set the current groove amount                           |

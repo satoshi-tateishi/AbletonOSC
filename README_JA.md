@@ -128,7 +128,7 @@ AbletonOSCはポート **11000** でOSCメッセージをリッスンし、ポ�
 | Address                                    | Query params                | Response params | Description                                             |
 |:-------------------------------------------|:----------------------------|:----------------|:--------------------------------------------------------|
 | /live/song/set/arrangement_overdub         | arrangement_overdub         |                 | アレンジメントオーバーダブを設定します (1=on, 0=off)                   |
-| /live/song/set/back_to_arranger            | back_to_arranger            |                 | "back to arranger" が点灯しているかどうかを設定します (1=on, 0=off)     |
+| /live/song/set/back_to_arranger            | back_to_arranger            |                 | "back to arranger" が点灯しているかどうかを設定します (1=on, 0=off)。アレンジメントに戻るには `0` を送信します。     |
 | /live/song/set/clip_trigger_quantization   | clip_trigger_quantization   |                 | 現在のクリップトリガークオンタイゼーションレベルを設定します         |
 | /live/song/set/current_song_time           | current_song_time           |                 | 現在の曲の時間（拍単位）を設定します                     |
 | /live/song/set/groove_amount               | groove_amount               |                 | 現在のグルーヴ量を設定します                           |
