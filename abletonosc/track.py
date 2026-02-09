@@ -28,8 +28,15 @@ class TrackHandler(AbletonOSCHandler):
                             tracks = list(self.song.tracks)
                         elif track_id_str == "master":
                             tracks = [self.song.master_track]
-                        elif re.match(r"^return \d+$", track_id_str):
-                            idx = int(track_id_str.split(" ")[1])
+                        elif re.match(r"^return .+$", track_id_str):
+                            val = track_id_str.split(" ")[1]
+                            if val.isdigit():
+                                idx = int(val)
+                            elif len(val) == 1 and val.isalpha():
+                                idx = ord(val.upper()) - 65
+                            else:
+                                self.logger.error("Invalid return track ID: %s" % val)
+                                return
                             tracks = [self.song.return_tracks[idx]]
                         else:
                             # トラック名として検索
