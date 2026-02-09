@@ -338,11 +338,15 @@ class TrackHandler(AbletonOSCHandler):
             return -70.0
 
         def track_get_send(track, params: Tuple[Any] = ()):
-            send_id, = params
+            send_id = params[0]
+            if isinstance(send_id, str):
+                send_id = ord(send_id.upper()) - 65
             return send_id, send_float_to_db(track.mixer_device.sends[send_id].value)
 
         def track_set_send(track, params: Tuple[Any] = ()):
             send_id, db = params
+            if isinstance(send_id, str):
+                send_id = ord(send_id.upper()) - 65
             track.mixer_device.sends[send_id].value = send_db_to_float(float(db))
 
         self.osc_server.add_handler("/live/track/get/send", create_track_callback(track_get_send))
