@@ -108,16 +108,55 @@ class TrackHandler(AbletonOSCHandler):
         # Volume, panning and send are properties of the track's mixer_device so
         # can't be formulated as normal callbacks that reference properties of track.
         #--------------------------------------------------------------------------------
-        mixer_properties_rw = ["volume", "panning"]
-        for prop in mixer_properties_rw:
-            self.osc_server.add_handler("/live/track/get/%s" % prop,
-                                        create_track_callback(self._get_mixer_property, prop))
-            self.osc_server.add_handler("/live/track/set/%s" % prop,
-                                        create_track_callback(self._set_mixer_property, prop))
-            self.osc_server.add_handler("/live/track/start_listen/%s" % prop,
-                                        create_track_callback(self._start_mixer_listen, prop, include_track_id=True))
-            self.osc_server.add_handler("/live/track/stop_listen/%s" % prop,
-                                        create_track_callback(self._stop_mixer_listen, prop, include_track_id=True))
+        #--------------------------------------------------------------------------------
+        # Volume and panning are properties of the track's mixer_device.
+        # Volume uses 0.0 to 1.0.
+        # Panning is specialized to use -50 to +50 for better integration with QLab.
+        #--------------------------------------------------------------------------------
+        self.osc_server.add_handler("/live/track/get/volume",
+                                    create_track_callback(self._get_mixer_property, "volume"))
+        self.osc_server.add_handler("/live/track/set/volume",
+                                    create_track_callback(self._set_mixer_property, "volume"))
+        self.osc_server.add_handler("/live/track/start_listen/volume",
+                                    create_track_callback(self._start_mixer_listen, "volume", include_track_id=True))
+        self.osc_server.add_handler("/live/track/stop_listen/volume",
+                                    create_track_callback(self._stop_mixer_listen, "volume", include_track_id=True))
+
+        def track_set_panning(track, params: Tuple[Any] = ()):
+            val = float(params[0])
+            # Map -50..50 to -1.0..1.0
+            float_val = max(-1.0, min(1.0, val / 50.0))
+            track.mixer_device.panning.value = float_val
+
+        def track_get_panning(track, params: Tuple[Any] = ()):
+            # Map -1.0..1.0 to -50..50
+            return track.mixer_device.panning.value * 50.0,
+
+        def track_start_listen_panning(track, params: Tuple[Any] = ()):
+            def property_changed_callback():
+                # Map -1.0..1.0 to -50..50
+                value = track.mixer_device.panning.value * 50.0
+                self.osc_server.send("/live/track/get/panning", (*params, value,))
+
+            listener_key = ("panning", tuple(params))
+            if listener_key in self.listener_functions:
+                track_stop_listen_panning(track, params)
+            
+            track.mixer_device.panning.add_value_listener(property_changed_callback)
+            self.listener_functions[listener_key] = property_changed_callback
+            property_changed_callback()
+
+        def track_stop_listen_panning(track, params: Tuple[Any] = ()):
+            listener_key = ("panning", tuple(params))
+            if listener_key in self.listener_functions:
+                listener_function = self.listener_functions[listener_key]
+                track.mixer_device.panning.remove_value_listener(listener_function)
+                del self.listener_functions[listener_key]
+
+        self.osc_server.add_handler("/live/track/set/panning", create_track_callback(track_set_panning))
+        self.osc_server.add_handler("/live/track/get/panning", create_track_callback(track_get_panning))
+        self.osc_server.add_handler("/live/track/start_listen/panning", create_track_callback(track_start_listen_panning, include_track_id=True))
+        self.osc_server.add_handler("/live/track/stop_listen/panning", create_track_callback(track_stop_listen_panning, include_track_id=True))
 
         # Still need to fix these
         # Might want to find a better approach that unifies volume and sends
