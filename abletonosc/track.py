@@ -241,15 +241,109 @@ class TrackHandler(AbletonOSCHandler):
         self.osc_server.add_handler("/live/track/start_listen/panning", create_track_callback(track_start_listen_panning, include_track_id=True))
 
         #--------------------------------------------------------------------------------
-        # Send Handlers (Uses scaled track volume calibration)
+        # Send Volume: -70.0dB to 0.0dB.
+        # Uses dedicated calibration data for maximum accuracy.
         #--------------------------------------------------------------------------------
+        SEND_CALIBRATION = [
+            (0.0, 1.0),
+            (-1.0, 0.97494245),
+            (-2.0, 0.95),
+            (-3.0, 0.92494243),
+            (-4.0, 0.9),
+            (-5.0, 0.8749424),
+            (-6.0, 0.85),
+            (-7.0, 0.82494247),
+            (-8.0, 0.8),
+            (-9.0, 0.7749424),
+            (-10.0, 0.75),
+            (-11.0, 0.72494245),
+            (-12.0, 0.7),
+            (-13.0, 0.67494243),
+            (-14.0, 0.65),
+            (-15.0, 0.6249424),
+            (-16.0, 0.6),
+            (-17.0, 0.57494247),
+            (-18.0, 0.55),
+            (-19.0, 0.5249424),
+            (-20.0, 0.5),
+            (-21.0, 0.4749424),
+            (-22.0, 0.44999987),
+            (-23.0, 0.4249423),
+            (-24.0, 0.39999983),
+            (-25.0, 0.37842214),
+            (-26.0, 0.35999984),
+            (-27.0, 0.3436638),
+            (-28.0, 0.32884738),
+            (-29.0, 0.31515393),
+            (-30.0, 0.3024142),
+            (-31.0, 0.29045448),
+            (-32.0, 0.2790877),
+            (-33.0, 0.26825556),
+            (-34.0, 0.25790676),
+            (-35.0, 0.2479827),
+            (-36.0, 0.23843881),
+            (-37.0, 0.22924209),
+            (-38.0, 0.2203353),
+            (-39.0, 0.21163017),
+            (-40.0, 0.20318097),
+            (-41.0, 0.19498289),
+            (-42.0, 0.18703692),
+            (-43.0, 0.17934962),
+            (-44.0, 0.17170687),
+            (-45.0, 0.16421928),
+            (-46.0, 0.15697636),
+            (-47.0, 0.14999978),
+            (-48.0, 0.14288142),
+            (-49.0, 0.13601431),
+            (-50.0, 0.12942863),
+            (-51.0, 0.122716784),
+            (-52.0, 0.11620167),
+            (-53.0, 0.109999634),
+            (-54.0, 0.10353558),
+            (-55.0, 0.097383775),
+            (-56.0, 0.09134778),
+            (-57.0, 0.085235655),
+            (-58.0, 0.079489216),
+            (-59.0, 0.073491305),
+            (-60.0, 0.06778603),
+            (-61.0, 0.062097725),
+            (-62.0, 0.056433436),
+            (-63.0, 0.051011093),
+            (-64.0, 0.045390394),
+            (-65.0, 0.04019515),
+            (-66.0, 0.034623135),
+            (-67.0, 0.02940422),
+            (-68.0, 0.022410715),
+            (-69.0, 0.013755304),
+            (-69.7, 0.004913827),
+            (-70.0, 0.0)
+        ]
+
+        def send_db_to_float(db):
+            if db >= 0.0: return 1.0
+            if db <= -70.0: return 0.0
+            for i in range(len(SEND_CALIBRATION) - 1):
+                upper, lower = SEND_CALIBRATION[i], SEND_CALIBRATION[i+1]
+                if db <= upper[0] and db >= lower[0]:
+                    return interpolate(db, lower, upper, 0, 1)
+            return 0.0
+
+        def send_float_to_db(val):
+            if val >= 1.0: return 0.0
+            if val <= 0.0: return -70.0
+            for i in range(len(SEND_CALIBRATION) - 1):
+                upper, lower = SEND_CALIBRATION[i], SEND_CALIBRATION[i+1]
+                if val <= upper[1] and val >= lower[1]:
+                    return interpolate(val, lower, upper, 1, 0)
+            return -70.0
+
         def track_get_send(track, params: Tuple[Any] = ()):
             send_id, = params
-            return send_id, float_to_db(track.mixer_device.sends[send_id].value * 0.85)
+            return send_id, send_float_to_db(track.mixer_device.sends[send_id].value)
 
         def track_set_send(track, params: Tuple[Any] = ()):
             send_id, db = params
-            track.mixer_device.sends[send_id].value = min(1.0, db_to_float(float(db)) / 0.85)
+            track.mixer_device.sends[send_id].value = send_db_to_float(float(db))
 
         self.osc_server.add_handler("/live/track/get/send", create_track_callback(track_get_send))
         self.osc_server.add_handler("/live/track/set/send", create_track_callback(track_set_send))
