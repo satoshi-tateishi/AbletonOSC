@@ -1,5 +1,6 @@
 from typing import Tuple, Any
 from .handler import AbletonOSCHandler
+import re
 
 class DeviceHandler(AbletonOSCHandler):
     def __init__(self, manager):
@@ -9,15 +10,78 @@ class DeviceHandler(AbletonOSCHandler):
     def init_api(self):
         def create_device_callback(func, *args, include_ids: bool = False):
             def device_callback(params: Tuple[Any]):
-                track_index, device_index = int(params[0]), int(params[1])
-                device = self.song.tracks[track_index].devices[device_index]
-                if (include_ids):
-                    rv = func(device, *args, params[0:])
-                else:
-                    rv = func(device, *args, params[2:])
+                track_id = params[0]
+                tracks = []
 
-                if rv is not None:
-                    return (track_index, device_index, *rv)
+                try:
+                    if isinstance(track_id, int):
+                        tracks = [self.song.tracks[track_id]]
+                    else:
+                        track_id_str = str(track_id)
+                        if track_id_str == "*":
+                            tracks = list(self.song.tracks)
+                        elif track_id_str == "master":
+                            tracks = [self.song.master_track]
+                        elif re.match(r"^return .+$", track_id_str):
+                            val = track_id_str.split(" ")[1]
+                            if val.isdigit():
+                                idx = int(val)
+                            elif len(val) == 1 and val.isalpha():
+                                idx = ord(val.upper()) - 65
+                            else:
+                                self.logger.error("Invalid return track ID: %s" % val)
+                                return
+                            tracks = [self.song.return_tracks[idx]]
+                        else:
+                            found_track = None
+                            for t in self.song.tracks:
+                                if t.name == track_id_str:
+                                    found_track = t
+                                    break
+                            
+                            if found_track:
+                                tracks = [found_track]
+                            else:
+                                self.logger.error("Track Name Error: Could not find track named '%s'" % track_id_str)
+                                return
+                except Exception as e:
+                    self.logger.error("Track ID Error (%s): %s" % (track_id, str(e)))
+                    return
+
+                for track in tracks:
+                    devices = []
+                    try:
+                        if isinstance(params[1], int):
+                            devices = [track.devices[int(params[1])]]
+                        else:
+                            device_name = str(params[1])
+                            found_device = None
+                            for d in track.devices:
+                                if d.name == device_name:
+                                    found_device = d
+                                    break
+                            if found_device:
+                                devices = [found_device]
+                            else:
+                                self.logger.error("Device Name Error: Could not find device named '%s' on track '%s'" % (device_name, track.name))
+                                continue
+                    except Exception as e:
+                        self.logger.error("Device ID Error (%s): %s" % (params[1], str(e)))
+                        continue
+
+                    for device in devices:
+                        if (include_ids):
+                            rv = func(device, *args, params[0:])
+                        else:
+                            rv = func(device, *args, params[2:])
+
+                        if rv is not None:
+                            # Use actual device index in response if possible
+                            try:
+                                device_index = list(track.devices).index(device)
+                            except:
+                                device_index = params[1]
+                            return (track_id, device_index, *rv)
 
             return device_callback
 
