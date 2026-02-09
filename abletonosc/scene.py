@@ -71,6 +71,11 @@ class SceneHandler(AbletonOSCHandler):
                                         create_scene_callback(self._stop_listen, prop, include_ids=True))
         for prop in properties_rw:
             self.osc_server.add_handler("/live/scene/set/%s" % prop,
+                                        create_track_callback(self._set_property, prop) if hasattr(self, "create_track_callback") else create_scene_callback(self._set_property, prop))
+
+        # Fix for potential previous typo: create_scene_callback should be used
+        for prop in properties_rw:
+            self.osc_server.add_handler("/live/scene/set/%s" % prop,
                                         create_scene_callback(self._set_property, prop))
         
         #------------------------------------------------------------------------------------------------
@@ -83,3 +88,20 @@ class SceneHandler(AbletonOSCHandler):
                 selected_scene.fire_as_selected()
 
         self.osc_server.add_handler("/live/scene/fire_selected", scene_fire_selected)
+
+        #--------------------------------------------------------------------------------
+        # Selected scene: Get index or name
+        #--------------------------------------------------------------------------------
+        def scene_get_selected_scene_index(params: Tuple[Any] = ()):
+            selected_scene = self.song.view.selected_scene
+            for index, scene in enumerate(self.song.scenes):
+                if scene == selected_scene:
+                    return index,
+
+        def scene_get_selected_scene_name(params: Tuple[Any] = ()):
+            selected_scene = self.song.view.selected_scene
+            if selected_scene:
+                return selected_scene.name,
+
+        self.osc_server.add_handler("/live/scene/get/selected_index", scene_get_selected_scene_index)
+        self.osc_server.add_handler("/live/scene/get/selected_name", scene_get_selected_scene_name)
